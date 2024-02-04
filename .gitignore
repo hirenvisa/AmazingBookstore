@@ -1,0 +1,6 @@
+"" 
+/.vs
+/bin/Debug/net8.0
+/obj
+*.user
+/wwwroot/lib/twitter-bootstrap

@@ -1,0 +1,97 @@
+﻿@page "/{authorInitialLetter?}"
+
+@using AmazingBookStore.Data
+@using AmazingBookStore.ViewModel
+@using Microsoft.EntityFrameworkCore
+@using AmazingBookStore.Components.Shared
+
+@inject BookstoreContext dbContext
+@inject IDataSeed<BookstoreContext> dataSeed
+
+<div class="row">
+    <div class="col">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <!-- buttons for books by authors initial letter  -->
+                    <th class="col" colspan="3">
+                        <a href="/" class="btn btn-primary">All</a>
+                        <a href="/0" class="btn btn-primary">No Author</a>
+                        @foreach (var letter in AuthorInitialLetters)
+                        {
+                            <a href="/@letter" class="btn btn-primary">@letter</a>
+                        }
+                    </th>
+                </tr>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (book, offset) in Books.Select((b, i) => (b, i)))
+                {
+                    <tr>
+                        <td>@offset + 1</td>
+                        <td>@book.Title</td>
+                        <td>@book.Author</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="row">
+    <div class="col">
+    </div>
+</div>
+
+@code {
+
+    private IEnumerable<BookHeader> Books { get; set; } = Array.Empty<BookHeader>();
+    private IEnumerable<string> AuthorInitialLetters { get; set; } = Array.Empty<string>();
+    [Parameter]
+    public string? authorInitialLetter { get; set; } 
+
+    protected override async Task OnInitializedAsync()
+    {
+        dataSeed.EnsureDataExists(dbContext);
+        OnGetProducts(authorInitialLetter);
+        PopulatingAuthorInitialLetters();
+        await base.OnInitializedAsync();
+    }
+
+    private void PopulatingAuthorInitialLetters()
+    {
+        var query = dbContext.Books
+               .Where(book => book.Author != null)
+               .Select(book => book.Author!)
+               .Select(author => author.Name.Substring(0, 1))
+               .Select(letter => letter.ToUpper())
+               .Distinct()
+               .OrderBy(letter => letter);
+        this.AuthorInitialLetters = query.ToList();
+    }
+
+    private async Task OnGetProducts(string authorInitialLetter)
+    {
+
+        IQueryable<Book> query = dbContext.Books.Include(book => book.Author);
+
+        if(authorInitialLetter == "0")
+        {
+            this.Books = query.ToList().ToBookHeaders();
+            return;
+        }
+        if (!string.IsNullOrEmpty(authorInitialLetter))
+        {
+            query = query.Where(book => book.Author != null && book.Author!.Name.StartsWith(authorInitialLetter));
+        }
+
+        this.Books = query.ToList().ToBookHeaders();
+    }
+
+
+
+}
